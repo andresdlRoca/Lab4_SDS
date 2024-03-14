@@ -6,6 +6,7 @@ import networkx
 from networkx.drawing.nx_pydot import write_dot
 import itertools
 import pprint
+import pefile
 
 """
 Copyright (c) 2015, Joshua Saxe
@@ -59,6 +60,23 @@ def getstrings(fullpath):
     strings = set(strings.split("\n"))
     return strings
 
+def getsectionnames(fullpath):
+    """
+    Extract section names from the binary indicated by the 'fullpath'
+    parameter, and then return the set of unique section names in
+    the binary.
+    """
+    try: 
+        pe = pefile.PE(fullpath)
+        section_names = set()
+        for section in pe.sections:
+            section_names.add(section.Name.decode().replace("\x00",""))
+        
+        print(section_names)
+        return section_names
+    except:
+        return set()
+
 def pecheck(fullpath):
     """
     Do a cursory sanity check to make sure 'fullpath' is
@@ -87,6 +105,11 @@ if __name__ == '__main__':
         default=0.8,help="Threshold above which to create an 'edge' between samples"
     )
 
+    parser.add_argument(
+        "--mode","-m",dest="mode",choices=["strings","section"],
+        default="strings",help="Whether to use strings or section names to compare samples"
+    )
+
     args = parser.parse_args()
     malware_paths = [] # where we'll store the malware file paths
     malware_attributes = dict() # where we'll store the malware strings
@@ -103,7 +126,14 @@ if __name__ == '__main__':
 
     # get and store the strings for all of the malware PE files
     for path in malware_paths:
-        attributes = getstrings(path)
+        # print(args.mode)
+        # attributes = getstrings(path)
+
+        if(args.mode == "strings"):
+            attributes = getstrings(path)
+
+        else:
+            attributes = getsectionnames(path)
         print ("Extracted {0} attributes from {1} ...".format(len(attributes),path))
         malware_attributes[path] = attributes
 
@@ -123,3 +153,7 @@ if __name__ == '__main__':
 
     # write the graph to disk so we can visualize it
     write_dot(graph,args.output_dot_file)
+
+# 1 = 0.6
+# 2 = 0.7
+# 3 = 0.8
